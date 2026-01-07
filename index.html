@@ -71,29 +71,34 @@
                 return;
             }
 
-data.forEach(row => {
-                // 1. ▼▼▼ 先にデータを変数に取り出す（これを一番上に！） ▼▼▼
+            data.forEach(row => {
+                // ▼▼▼ ここをスプレッドシートの新しい列順（A～G列）に合わせました ▼▼▼
+                // A列[0]: id
+                // B列[1]: exam (2級建築士)
+                // C列[2]: 大 (建築計画など)
+                // D列[3]: 中 (第1編... -> これをメインタイトルにします)
+                // E列[4]: 小 (第1章... -> これをサブタグにします)
+                // F列[5]: level (0)
+                // G列[6]: next_review (日付)
+
                 const id = row[0];
                 const examName = row[1];     // "2級建築士"
                 const categoryL = row[2];    // "大: 建築計画"
-                const title = row[3];        // "中: 第1編..."
-                const categoryS = row[4];    // "小: 第1章..."
+                const title = row[3];        // "中: 第1編..." (これを問題名として表示)
+                const categoryS = row[4];    // "小: 第1章..." (補足情報)
                 const level = row[5];        // "level"
-                const nextDate = row[6];     // "日付" ← これがここで定義されないと次で使えない！
-
-                // 2. ▼▼▼ 門番コード（データを取り出した後にチェック） ▼▼▼
+                const nextDate = row[6];     // "日付"
+                // ▼▼▼ 追加する「門番」コード（ここから） ▼▼▼
                 const today = new Date();
-                today.setHours(23, 59, 59, 999); // 今日の夜中までOK
-                
-                // nextDateを日付型に変換
+                today.setHours(23, 59, 59, 999); // 今日の夜中までOKとする
                 const reviewDate = new Date(nextDate);
 
-                // 「復習日」が「今日」より未来なら、ここで帰ってもらう（return）
+                // もし「復習日」が「今日」より未来なら、表示せずにスキップする
                 if (reviewDate > today) {
                     return; 
                 }
+                // ▲▲▲ 追加するコード（ここまで） ▲▲▲
 
-                // 3. ▼▼▼ HTMLの生成（ここから下は変更なし） ▼▼▼
                 const card = document.createElement('div');
                 card.className = 'bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between transition-all hover:shadow-md mb-3';
                 
@@ -133,6 +138,47 @@ data.forEach(row => {
                     </button>
                 `;
                 container.appendChild(card);
+            });
+        }
+
+        // 完了ボタンを押したときの処理
+        function completeTask(id, btnElement) {
+            // 見た目の即時反映（くるくる回るローディング表示）
+            const originalContent = btnElement.innerHTML;
+            btnElement.innerHTML = `<div class="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>`;
+            btnElement.disabled = true;
+
+            // GASにデータを送信
+            fetch(API_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `id=${id}`
+            }).then(() => {
+                // 成功したらカードをシュッと消す
+                const card = btnElement.closest('div.bg-white');
+                card.style.transition = "all 0.5s ease-out";
+                card.style.opacity = "0";
+                card.style.transform = "translateX(50px)";
+                setTimeout(() => {
+                    card.remove();
+                    
+                    // 全部のカードがなくなったら「完了」メッセージを出す
+                    if(document.getElementById('card-container').children.length === 0) {
+                        document.getElementById('card-container').innerHTML = `
+                            <div class="text-center text-gray-400 py-10 animate-fade-in">
+                                <p class="text-4xl mb-2">🎉</p>
+                                <p>今日のノルマ達成です！</p>
+                            </div>`;
+                    }
+                }, 500);
+            }).catch(err => {
+                console.error(err);
+                alert('通信エラー：もう一度試してみてください');
+                btnElement.innerHTML = originalContent;
+                btnElement.disabled = false;
             });
         }
 
