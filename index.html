@@ -28,7 +28,7 @@
 
     <script>
         // ▼▼▼ ここを新しいURLに更新しました ▼▼▼
-        const API_URL = "https://script.google.com/macros/s/AKfycbyhCdqKK561t1kHkpnHzinHixiTSq91N8vcFoEXN-Z98P1phc3xCsLP-ctHM_Q414lH/exec";
+        const API_URL = "https://script.google.com/macros/s/AKfycbz3QLaZHKAwce6FkUR7aRfEOcGl1w6YsasUQ_Tyaii2Vvmq9IYq9w2C-sjtG-obMW-S/exec";
 
         // 日付を見やすく整形する関数 (2025-12-31T... -> 2025/12/31)
         function formatDate(dateString) {
@@ -72,6 +72,16 @@
             }
 
             data.forEach(row => {
+                // ▼▼▼ 追加する「門番」コード（ここから） ▼▼▼
+                const today = new Date();
+                today.setHours(23, 59, 59, 999); // 今日の夜中までOKとする
+                const reviewDate = new Date(nextDate);
+
+                // もし「復習日」が「今日」より未来なら、表示せずにスキップする
+                if (reviewDate > today) {
+                    return; 
+                }
+                // ▲▲▲ 追加するコード（ここまで） ▲▲▲
                 // ▼▼▼ ここをスプレッドシートの新しい列順（A～G列）に合わせました ▼▼▼
                 // A列[0]: id
                 // B列[1]: exam (2級建築士)
