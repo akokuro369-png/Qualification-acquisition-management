@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2級建築士 学習クエスト</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="学習クエスト">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2921/2921226.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 select-none">
+
+    <header class="max-w-md mx-auto mb-6 pt-2 text-center">
+        <h1 class="text-2xl font-bold text-gray-800 flex items-center justify-center gap-2">
+            <span>🏗️</span> 学習クエスト
+        </h1>
+        <p class="text-xs text-gray-400 mt-1">iPad mini Review App</p>
+    </header>
+
+    <main id="card-container" class="max-w-md mx-auto space-y-3 pb-20">
+        <div class="text-center text-gray-400 py-20 animate-pulse flex flex-col items-center gap-3">
+            <div class="w-8 h-8 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
+            <p>読み込んでいます...</p>
+        </div>
+    </main>
+
+    <script>
+        // ▼▼▼ ここを新しいURLに更新しました ▼▼▼
+        const API_URL = "https://script.google.com/macros/s/AKfycbyhCdqKK561t1kHkpnHzinHixiTSq91N8vcFoEXN-Z98P1phc3xCsLP-ctHM_Q414lH/exec";
+
+        // 日付を見やすく整形する関数 (2025-12-31T... -> 2025/12/31)
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ja-JP', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+        }
+
+        // データを取得して表示する
+        async function fetchTasks() {
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+                renderCards(data);
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('card-container').innerHTML = `
+                    <div class="p-6 bg-red-50 text-red-600 rounded-xl text-center border border-red-100">
+                        <p class="font-bold mb-2">エラーが発生しました 😢</p>
+                        <p class="text-sm">GASのデプロイ設定が<br>「全員 (Anyone)」になっているか確認してください。</p>
+                    </div>`;
+            }
+        }
+
+        // カードを生成して表示
+        function renderCards(data) {
+            const container = document.getElementById('card-container');
+            container.innerHTML = '';
+
+            if (data.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-gray-400 py-10">
+                        <p class="text-4xl mb-2">🎉</p>
+                        <p>今日の復習はすべて完了です！</p>
+                    </div>`;
+                return;
+            }
+
+            data.forEach(row => {
+                // ▼▼▼ ここをスプレッドシートの新しい列順（A～G列）に合わせました ▼▼▼
+                // A列[0]: id
+                // B列[1]: exam (2級建築士)
+                // C列[2]: 大 (建築計画など)
+                // D列[3]: 中 (第1編... -> これをメインタイトルにします)
+                // E列[4]: 小 (第1章... -> これをサブタグにします)
+                // F列[5]: level (0)
+                // G列[6]: next_review (日付)
+
+                const id = row[0];
+                const examName = row[1];     // "2級建築士"
+                const categoryL = row[2];    // "大: 建築計画"
+                const title = row[3];        // "中: 第1編..." (これを問題名として表示)
+                const categoryS = row[4];    // "小: 第1章..." (補足情報)
+                const level = row[5];        // "level"
+                const nextDate = row[6];     // "日付"
+
+                const card = document.createElement('div');
+                card.className = 'bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between transition-all hover:shadow-md mb-3';
+                
+                card.innerHTML = `
+                    <div class="flex-1 min-w-0 pr-3">
+                        <div class="flex flex-wrap items-center gap-2 mb-2">
+                            <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded border border-gray-200 whitespace-nowrap">
+                                ${examName}
+                            </span>
+                            <span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 whitespace-nowrap">
+                                ${categoryL}
+                            </span>
+                            <span class="text-[10px] text-red-500 border border-red-200 px-1.5 py-0.5 rounded ml-auto font-mono bg-white">
+                                Lv.${level}
+                            </span>
+                        </div>
+                        
+                        <h3 class="font-bold text-gray-800 text-lg leading-tight mb-1 truncate">
+                            ${title}
+                        </h3>
+
+                        <p class="text-xs text-gray-500 mb-2">
+                            ${categoryS}
+                        </p>
+                        
+                        <div class="text-xs text-gray-400 flex items-center gap-1.5 border-t border-gray-100 pt-2 mt-1">
+                            <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            <span class="font-mono pt-0.5">次回: ${formatDate(nextDate)}</span>
+                        </div>
+                    </div>
+                    
+                    <button onclick="completeTask('${id}', this)" 
+                            class="shrink-0 w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-lg active:scale-90 transition-all hover:bg-blue-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // 完了ボタンを押したときの処理
+        function completeTask(id, btnElement) {
+            // 見た目の即時反映（くるくる回るローディング表示）
+            const originalContent = btnElement.innerHTML;
+            btnElement.innerHTML = `<div class="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>`;
+            btnElement.disabled = true;
+
+            // GASにデータを送信
+            fetch(API_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `id=${id}`
+            }).then(() => {
+                // 成功したらカードをシュッと消す
+                const card = btnElement.closest('div.bg-white');
+                card.style.transition = "all 0.5s ease-out";
+                card.style.opacity = "0";
+                card.style.transform = "translateX(50px)";
+                setTimeout(() => {
+                    card.remove();
+                    
+                    // 全部のカードがなくなったら「完了」メッセージを出す
+                    if(document.getElementById('card-container').children.length === 0) {
+                        document.getElementById('card-container').innerHTML = `
+                            <div class="text-center text-gray-400 py-10 animate-fade-in">
+                                <p class="text-4xl mb-2">🎉</p>
+                                <p>今日のノルマ達成です！</p>
+                            </div>`;
+                    }
+                }, 500);
+            }).catch(err => {
+                console.error(err);
+                alert('通信エラー：もう一度試してみてください');
+                btnElement.innerHTML = originalContent;
+                btnElement.disabled = false;
+            });
+        }
+
+        // スタート
+        fetchTasks();
+    </script>
+</body>
+</html>
