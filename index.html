@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>2級建築士 学習クエスト</title>
-<meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="学習クエスト">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2921/2921226.png">
@@ -27,10 +27,18 @@
     </main>
 
     <script>
-        // ▼▼▼ ここを新しいURLに更新しました ▼▼▼
+        // ▼▼▼ 設定エリア：試験日リスト ▼▼▼
+        const EXAM_LIST = [
+            { name: '2級建築士 学科', date: '2026-07-05' },
+            { name: '2級建築士 製図', date: '2026-09-13' },
+            // 必要に応じてここに追加してください
+            // { name: 'BIM利用技術者1級', date: '2026-09-06' }, 
+        ];
+        // ▲▲▲ 設定エリアここまで ▲▲▲
+
         const API_URL = "https://script.google.com/macros/s/AKfycbz9V4Li167jvFPCbSaCsvSoeENi38KMYQdxJyY9zIuiNyGn8xbdNTAW7s62Spc2v-5X/exec";
 
-        // 日付を見やすく整形する関数 (2025-12-31T... -> 2025/12/31)
+        // 日付整形
         function formatDate(dateString) {
             if (!dateString) return '-';
             const date = new Date(dateString);
@@ -41,7 +49,18 @@
             });
         }
 
-        // データを取得して表示する
+        // カウントダウンHTML生成関数
+        function getCountdownHtml(targetDate) {
+            const today = new Date(); today.setHours(0,0,0,0);
+            const target = new Date(targetDate); target.setHours(0,0,0,0);
+            const diffDays = Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+            
+            if (diffDays > 0) return `あと <span class="text-red-600 text-2xl font-bold">${diffDays}</span> 日`;
+            if (diffDays === 0) return `<span class="text-red-600 font-bold">今日が本番！</span>`;
+            return `<span class="text-gray-400 text-xs">終了</span>`;
+        }
+
+        // データを取得
         async function fetchTasks() {
             try {
                 const response = await fetch(API_URL);
@@ -52,52 +71,68 @@
                 document.getElementById('card-container').innerHTML = `
                     <div class="p-6 bg-red-50 text-red-600 rounded-xl text-center border border-red-100">
                         <p class="font-bold mb-2">エラーが発生しました 😢</p>
-                        <p class="text-sm">GASのデプロイ設定が<br>「全員 (Anyone)」になっているか確認してください。</p>
+                        <p class="text-sm">通信環境を確認するか、<br>GASのデプロイを更新してください。</p>
                     </div>`;
             }
         }
 
-        // カードを生成して表示
+        // カード生成
         function renderCards(data) {
             const container = document.getElementById('card-container');
             container.innerHTML = '';
 
+            // 1. ▼▼▼ カウントダウン表示エリア（ここに追加） ▼▼▼
+            const countdownContainer = document.createElement('div');
+            countdownContainer.className = 'grid grid-cols-1 gap-3 mb-6';
+
+            EXAM_LIST.forEach(exam => {
+                const examDiv = document.createElement('div');
+                examDiv.className = 'bg-white border border-red-100 text-gray-700 p-3 rounded-lg shadow-sm flex items-center justify-between px-4';
+                examDiv.innerHTML = `
+                    <div class="text-left">
+                        <p class="text-xs text-gray-500 font-bold">${exam.name}</p>
+                        <p class="text-[10px] text-gray-400">${formatDate(exam.date)}</p>
+                    </div>
+                    <div class="text-base text-right">
+                        ${getCountdownHtml(exam.date)}
+                    </div>
+                `;
+                countdownContainer.appendChild(examDiv);
+            });
+            container.appendChild(countdownContainer);
+            // ▲▲▲ カウントダウンここまで ▲▲▲
+
+            // データが空（完了）の場合
             if (data.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center text-gray-400 py-10">
+                // カウントダウンの下に完了メッセージを出す
+                const completeMsg = document.createElement('div');
+                completeMsg.className = "text-center text-gray-400 py-10";
+                completeMsg.innerHTML = `
                         <p class="text-4xl mb-2">🎉</p>
                         <p>今日の復習はすべて完了です！</p>
-                    </div>`;
+                    `;
+                container.appendChild(completeMsg);
                 return;
             }
 
+            // 2. タスクカード生成
             data.forEach(row => {
-                // ▼▼▼ ここをスプレッドシートの新しい列順（A～G列）に合わせました ▼▼▼
-                // A列[0]: id
-                // B列[1]: exam (2級建築士)
-                // C列[2]: 大 (建築計画など)
-                // D列[3]: 中 (第1編... -> これをメインタイトルにします)
-                // E列[4]: 小 (第1章... -> これをサブタグにします)
-                // F列[5]: level (0)
-                // G列[6]: next_review (日付)
-
                 const id = row[0];
-                const examName = row[1];     // "2級建築士"
-                const categoryL = row[2];    // "大: 建築計画"
-                const title = row[3];        // "中: 第1編..." (これを問題名として表示)
-                const categoryS = row[4];    // "小: 第1章..." (補足情報)
-                const level = row[5];        // "level"
-                const nextDate = row[6];     // "日付"
-                // ▼▼▼ 追加する「門番」コード（ここから） ▼▼▼
+                const examName = row[1];
+                const categoryL = row[2];
+                const categoryM = row[3]; // 中項目 (例: 第1編_環境工学) -> これを小さくする
+                const categoryS = row[4]; // 小項目 (例: 第2章_換気) -> これを大きくする
+                const level = row[5];
+                const nextDate = row[6];
+
+                // 門番コード
                 const today = new Date();
-                today.setHours(23, 59, 59, 999); // 今日の夜中までOKとする
+                today.setHours(23, 59, 59, 999);
                 const reviewDate = new Date(nextDate);
 
-                // もし「復習日」が「今日」より未来なら、表示せずにスキップする
                 if (reviewDate > today) {
                     return; 
                 }
-                // ▲▲▲ 追加するコード（ここまで） ▲▲▲
 
                 const card = document.createElement('div');
                 card.className = 'bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between transition-all hover:shadow-md mb-3';
@@ -116,14 +151,13 @@
                             </span>
                         </div>
                         
-                        <h3 class="font-bold text-gray-800 text-lg leading-tight mb-1 truncate">
-                            ${title}
-                        </h3>
-
-                        <p class="text-xs text-gray-500 mb-2">
-                            ${categoryS}
+                        <p class="text-xs text-gray-500 leading-tight mb-1 truncate">
+                            ${categoryM}
                         </p>
-                        
+
+                        <h3 class="font-bold text-gray-800 text-lg mb-2 leading-tight">
+                            ${categoryS}
+                        </h3>
                         <div class="text-xs text-gray-400 flex items-center gap-1.5 border-t border-gray-100 pt-2 mt-1">
                             <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                             <span class="font-mono pt-0.5">次回: ${formatDate(nextDate)}</span>
@@ -141,37 +175,33 @@
             });
         }
 
-        // 完了ボタンを押したときの処理
+        // 完了ボタン処理
         function completeTask(id, btnElement) {
-            // 見た目の即時反映（くるくる回るローディング表示）
             const originalContent = btnElement.innerHTML;
             btnElement.innerHTML = `<div class="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>`;
             btnElement.disabled = true;
 
-            // GASにデータを送信
             fetch(API_URL, {
                 method: 'POST',
                 mode: 'no-cors',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: `id=${id}`
             }).then(() => {
-                // 成功したらカードをシュッと消す
                 const card = btnElement.closest('div.bg-white');
                 card.style.transition = "all 0.5s ease-out";
                 card.style.opacity = "0";
                 card.style.transform = "translateX(50px)";
                 setTimeout(() => {
                     card.remove();
-                    
-                    // 全部のカードがなくなったら「完了」メッセージを出す
-                    if(document.getElementById('card-container').children.length === 0) {
-                        document.getElementById('card-container').innerHTML = `
-                            <div class="text-center text-gray-400 py-10 animate-fade-in">
-                                <p class="text-4xl mb-2">🎉</p>
-                                <p>今日のノルマ達成です！</p>
-                            </div>`;
+                    // カウントダウンエリア(children[0])以外に要素がなければ完了
+                    if(document.getElementById('card-container').children.length === 1) {
+                         const completeMsg = document.createElement('div');
+                         completeMsg.className = "text-center text-gray-400 py-10 animate-fade-in";
+                         completeMsg.innerHTML = `
+                            <p class="text-4xl mb-2">🎉</p>
+                            <p>今日のノルマ達成です！</p>
+                         `;
+                         document.getElementById('card-container').appendChild(completeMsg);
                     }
                 }, 500);
             }).catch(err => {
@@ -182,7 +212,6 @@
             });
         }
 
-        // スタート
         fetchTasks();
     </script>
 </body>
